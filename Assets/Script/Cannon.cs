@@ -1,17 +1,26 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class Cannon : MonoBehaviour {
+public class Cannon : MonoBehaviour
+{
+	public AudioClip shootSound;
+	public bool canShoot = true;
 
-	public Rigidbody projectile;
-	public float speed = 20;
-	public AudioClip shot;
-	private bool canShot = true;
+	public float lastShot = 0;
+	public float shootCooldown = 0.5f;
+	public Transform[] cannonPositions;
 
-	public float tempoEntreTiro = 0f;
-	private float Count = 2f;
-	//public string name = "";
-	GameObject[] cannons;
+	void Update ()
+	{
+		if (canShoot && Time.time - lastShot > shootCooldown)
+		{
+			lastShot = Time.time;
+			ObjectPool.Instance.GetObjectForType("Projectile", cannonPositions[0].position);
+		}
+	}
+
+
+	/*
 
 	// Use this for initialization
 	void Start () {
@@ -54,9 +63,9 @@ public class Cannon : MonoBehaviour {
 		//yield return new WaitForSeconds(1);
 		
 		//audio.PlayOneShot(shot, 0.7F);
-		
-		Rigidbody instantiatedProjectile = Instantiate(projectile,cannon.transform.position,cannon.transform.rotation)as Rigidbody;
-		instantiatedProjectile.velocity = cannon.transform.TransformDirection(new Vector3(0, 0,speed));
+
+		GameObject instantiatedProjectile = Instantiate(projectilePrefab, cannon.transform.position, cannon.transform.rotation) as GameObject;
+		instantiatedProjectile.rigidbody.velocity = cannon.transform.TransformDirection(new Vector3(0, 0,speed));
 
 
 		yield return new WaitForSeconds(2);
@@ -73,9 +82,9 @@ public class Cannon : MonoBehaviour {
 	
 		
 		audio.PlayOneShot(shot, 0.7F);
-		
-		Rigidbody instantiatedProjectile = Instantiate(projectile,cannon.transform.position,cannon.transform.rotation)as Rigidbody;
-		instantiatedProjectile.velocity = cannon.transform.TransformDirection(new Vector3(0, 0,speed));
+
+		GameObject instantiatedProjectile = Instantiate(projectilePrefab, cannon.transform.position, cannon.transform.rotation) as GameObject;
+		instantiatedProjectile.rigidbody.velocity = cannon.transform.TransformDirection(new Vector3(0, 0,speed));
 		
 
 		//destroi a instancia \o/
@@ -83,6 +92,6 @@ public class Cannon : MonoBehaviour {
 		
 
 	}
-
+	*/
 
 }

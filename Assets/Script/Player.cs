@@ -1,19 +1,41 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[RequireComponent(typeof(CharacterController))]
 public class Player : MonoBehaviour {
 
 	public Camera gameCamera;
 	float speed = 7f;
+	CharacterController controller;
 
+	public float maxHorizontalMovement = 4.5f;
+	public float maxVerticalMovement = 20f;
+	public float minVerticalMovement = 7f;
 
-	void Start () {
-
+	void Start ()
+	{
+		controller = GetComponent<CharacterController>();
 	}
 
 	// Update is called once per frame
-	void Update () {
-	
+	void Update ()
+	{
+		
+		Vector3 relativePosition = transform.position - transform.parent.position;
+		float moveAmountVertical = Input.GetAxis("Vertical") * speed * Time.deltaTime;
+		float moveAmountHorizontal = Input.GetAxis("Horizontal") * speed * Time.deltaTime;
+
+		if (relativePosition.z + moveAmountVertical < maxVerticalMovement && relativePosition.z + moveAmountVertical > minVerticalMovement)
+		{
+			controller.Move(transform.forward * moveAmountVertical);
+		}
+
+		if (relativePosition.x + moveAmountHorizontal < maxHorizontalMovement && relativePosition.x + moveAmountHorizontal > -maxHorizontalMovement)
+		{
+			controller.Move(transform.right * moveAmountHorizontal);
+		}
+
+		/*
 		Vector3 pos = gameCamera.WorldToViewportPoint(transform.position);
 
 
@@ -42,6 +64,7 @@ public class Player : MonoBehaviour {
 		if (Input.GetKey(KeyCode.D)&& pos.x<0.9f){
 			transform.Translate(1f * speed * Time.deltaTime,0,0);
 		}
+		*/
 
 	}
 

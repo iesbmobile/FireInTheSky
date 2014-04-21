@@ -1,35 +1,24 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class StageManager : MonoBehaviour
 {
 	public static StageManager Instance = null;
-	public static Transform currentBlock;
+
+	public List<Block> allBlocks = new List<Block>();
 
 	public Transform[] blockPrefabs;
 	public Texture2D[] blockGroundTextures;
 
+	public Block currentBlock;
+
+	public int blockSize = 64;
 	public int numberOfBlocks = 5;
-
-	bool instantiated = false;
-	public int blockSize = 16;
-
-	static Vector3 _stageStartPoint = Vector3.zero;
-	public static Vector3 stageStartPoint
-	{
-		set
-		{
-			_stageStartPoint.x = value.x;
-			_stageStartPoint.y = value.y;
-		}
-	}
 
 	void Awake()
 	{
-		if (Instance == null)
-		{
-			Instance = this;
-		}
+		Instance = this;
 	}
 
 	void Start()
@@ -37,45 +26,62 @@ public class StageManager : MonoBehaviour
 		CreateBlock(Vector3.zero);
 	}
 
+	Vector3 viewportUpperRay = new Vector3(0.5f, 1f, 0);
+	Vector3 viewportDownRay = new Vector3(0.5f, 0, 0);
+
 	void Update()
 	{
-		if (StillHasBlocks())
+		
+		Ray cameraUpperRaycast = Camera.main.ViewportPointToRay(viewportUpperRay);
+		Ray cameraDownRaycast = Camera.main.ViewportPointToRay(viewportDownRay);
+
+		Debug.DrawLine(cameraUpperRaycast.origin, cameraUpperRaycast.origin + cameraUpperRaycast.direction * 99f);
+		Debug.DrawLine(cameraUpperRaycast.origin, cameraDownRaycast.origin + cameraDownRaycast.direction * 99f);
+
+		if (!Physics.Raycast(cameraUpperRaycast))
 		{
-			//transform.Translate(Vector3.forward * 2 * Time.deltaTime, Space.World);
+			CreateBlock(currentBlock.GetEndPosition());
 		}
-		if (Mathf.Floor(transform.position.z) % blockSize == 0)
+
+		for (int i = 0; i < allBlocks.Count; i++)
 		{
-			if (!instantiated)
+			Vector3 pointOnForwardLine = cameraDownRaycast.GetPoint(Camera.main.transform.position.y);
+			Debug.DrawLine(pointOnForwardLine, pointOnForwardLine + Vector3.up * 99f);
+
+			if (allBlocks[i].GetEndPosition().z < pointOnForwardLine.z)
 			{
-				Vector3 newPoint = new Vector3(0, 0, transform.position.z + 28);
-				CreateBlock(newPoint);
-				instantiated = true;
+				Block block = allBlocks[i];
+				allBlocks.Remove(block);
+				Destroy(block.gameObject);
+				i--;
 			}
-		}
-		else
-		{
-			instantiated = false;
 		}
 	}
 
-	public static void CreateBlock(Vector3 point)
+	public void CreateBlock(Vector3 point)
 	{
 		if (StillHasBlocks())
 		{
-			int randomBlock = Random.Range(0, Instance.blockPrefabs.Length);
-			currentBlock = Instantiate(Instance.blockPrefabs[randomBlock], point, Quaternion.identity) as Transform;
-			foreach (Transform t in currentBlock)
+			int randomBlock = Random.Range(0, blockPrefabs.Length);
+			Transform newBlock = Instantiate(blockPrefabs[randomBlock], point, Quaternion.identity) as Transform;
+			currentBlock = newBlock.GetComponent<Block>();
+			allBlocks.Add(currentBlock);
+			foreach (Transform t in newBlock)
 			{
 				BuildingRandomizer br = t.GetComponent<BuildingRandomizer>();
 				if (br)
 					br.Randomize();
 			}
 		}
-		Instance.numberOfBlocks--;
+		else
+		{
+			Movement.Instance.move = false;
+		}
+		numberOfBlocks--;
 	}
 
-	public static bool StillHasBlocks()
+	public bool StillHasBlocks()
 	{
-		return Instance.numberOfBlocks > 0;
+		return numberOfBlocks > 0;
 	}
 }

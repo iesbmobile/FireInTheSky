@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,7 +9,8 @@ using UnityEngine;
 [AddComponentMenu("Gameplay/ObjectPool")]
 public class ObjectPool : MonoBehaviour
 {
-    public static ObjectPool instance { get; private set; }
+    public static ObjectPool Instance { get; private set; }
+
     #region member
     /// <summary>
     /// Member class for a prefab entered into the object pool
@@ -20,13 +22,13 @@ public class ObjectPool : MonoBehaviour
         /// the object to pre instantiate
         /// </summary>
         [SerializeField]
-        public GameObject Prefab;
+        public GameObject prefab;
  
         /// <summary>
         /// quantity of object to pre-instantiate
         /// </summary>
         [SerializeField]
-        public int Count;
+        public int count;
     }
     #endregion
  
@@ -34,56 +36,67 @@ public class ObjectPool : MonoBehaviour
     /// The object prefabs which the pool can handle
     /// by The amount of objects of each type to buffer.
     /// </summary>
-    public ObjectPoolEntry[] Entries;
+    public ObjectPoolEntry[] entries;
  
     /// <summary>
     /// The pooled objects currently available.
     /// Indexed by the index of the objectPrefabs
     /// </summary>
-    [HideInInspector]
-    public List<GameObject>[] Pool;
+    //[HideInInspector]
+    public Hashtable pool;
  
     /// <summary>
     /// The container object that we will keep unused pooled objects so we dont clog up the editor with objects.
     /// </summary>
-    protected GameObject ContainerObject;
+    protected GameObject containerObject;
  
-    void OnEnable()
+    void Awake ()
     {
-        instance = this;
+        Instance = this;
     }
  
     // Use this for initialization
-    void Start()
+    void Start ()
     {
-        ContainerObject = new GameObject("ObjectPool");
+        containerObject = new GameObject("ObjectPool");
  
         //Loop through the object prefabs and make a new list for each one.
         //We do this because the pool can only support prefabs set to it in the editor,
         //so we can assume the lists of pooled objects are in the same order as object prefabs in the array
-        Pool = new List<GameObject>[Pool.Length];
+        pool = new Hashtable();
        
-        for (int i = 0; i < Entries.Length; i++)
+        for (int i = 0; i < entries.Length; i++)
         {
-            var objectPrefab = Entries[i];
+            var objectPrefab = entries[i];
        
             //create the repository
-            Pool[i] = new List<GameObject>();  
+            pool.Add(objectPrefab.prefab.name, new List<GameObject>());
  
             //fill it
-            for (int n = 0; n < objectPrefab.Count; n++)
+            for (int n = 0; n < objectPrefab.count; n++)
             {
  
-                var newObj = Instantiate(objectPrefab.Prefab) as GameObject;
+                var newObj = Instantiate(objectPrefab.prefab) as GameObject;
  
-                newObj.name = objectPrefab.Prefab.name;
+                newObj.name = objectPrefab.prefab.name;
  
                 PoolObject(newObj);
             }
         }
     }
- 
- 
+
+	public GameObject GetObjectForType (string objectType, Vector3 position)
+	{
+		GameObject newGO = GetObjectForType(objectType, false);
+		newGO.transform.position = position;
+		newGO.SetActive(true);
+		return newGO;
+	}
+
+	public GameObject GetObjectForType (string objectType)
+	{
+		return GetObjectForType(objectType, true);
+	}
  
     /// <summary>
     /// Gets a new object for the name type provided.  If no object type exists or if onlypooled is true and there is no objects of that type in the pool
@@ -98,37 +111,24 @@ public class ObjectPool : MonoBehaviour
     /// <param name='onlyPooled'>
     /// If true, it will only return an object if there is one currently pooled.
     /// </param>
-    public GameObject GetObjectForType(string objectType, bool onlyPooled)
+    public GameObject GetObjectForType(string objectType, bool activateNow)
     {
- 
-        for (int i = 0; i < Entries.Length; i++)
-        {
-            var prefab = Entries[i].Prefab;
- 
-            if (prefab.name != objectType)
-                continue;
- 
-            if (Pool[i].Count > 0)
-            {
- 
-                GameObject pooledObject = Pool[i][0];
- 
-                Pool[i].RemoveAt(0);
- 
-                pooledObject.transform.parent = null;
- 
-                pooledObject.SetActiveRecursively(true);
- 
-                return pooledObject;
-            }
-            if (!onlyPooled)
-            {
-                return Instantiate(Entries[i].Prefab) as GameObject;
-            }
-        }
- 
-        //If we have gotten here either there was no object of the specified type or non were left in the pool with onlyPooled set to true
-        return null;
+		if (pool.ContainsKey(objectType))
+		{
+			List<GameObject> objList = (List<GameObject>)pool[objectType];
+			if (objList.Count > 0)
+			{
+				GameObject pooledObject = objList[0];
+				objList.RemoveAt(0);
+				pooledObject.SetActive(activateNow);
+				return pooledObject;
+			}
+			GameObject newObj = Instantiate(Resources.Load(objectType)) as GameObject;
+			newObj.SetActive(activateNow);
+			return newObj;
+		}
+		//If we have gotten here either there was no object of the specified type or non were left in the pool with onlyPooled set to true
+		throw new ArgumentException("Não foi encontrado objeto do tipo " + objectType + " na Pool.");
     }
  
     /// <summary>
@@ -139,19 +139,22 @@ public class ObjectPool : MonoBehaviour
     /// </param>
     public void PoolObject(GameObject obj)
     {
- 
-        for (int i = 0; i < Entries.Length; i++)
-        {
-            if (Entries[i].Prefab.name != obj.name)
-                continue;
- 
-            obj.SetActiveRecursively(false);
- 
-            obj.transform.parent = ContainerObject.transform;
- 
-            Pool[i].Add(obj);
- 
-            return;
-        }
+		obj.name = obj.name.Replace("(Clone)", "");
+
+		if (pool.ContainsKey(obj.name))
+		{
+			List<GameObject> objList = (List<GameObject>)pool[obj.name];
+			obj.SetActive(false);
+			obj.transform.parent = containerObject.transform;
+			objList.Add(obj);
+		}
+		else
+		{
+			List<GameObject> newObjList = new List<GameObject>();
+			obj.SetActive(false);
+			obj.transform.parent = containerObject.transform;
+			newObjList.Add(obj);
+			pool.Add(obj.name, newObjList);
+		}
     }
 }
